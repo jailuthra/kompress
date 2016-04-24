@@ -8,6 +8,7 @@ struct queuenode {
 struct queue {
     struct queuenode *front;
     struct queuenode *rear;
+    int size;
 };
 
 struct queue * initqueue();

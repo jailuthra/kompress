@@ -5,6 +5,7 @@ struct queue * initqueue()
 {
     struct queue *q = malloc(sizeof(struct queue));
     q->front = q->rear = NULL;
+    q->size = 0;
 }
 
 void freequeue(struct queue *q)
@@ -22,6 +23,7 @@ void enqueue(struct queue *q, void *data)
     struct queuenode *temp = malloc(sizeof(struct queuenode));
     temp->data = data;
     temp->next = NULL;
+    q->size++;
     if (q->front == NULL && q->rear == NULL) {
         q->front = q->rear = temp;
         return;
@@ -36,6 +38,7 @@ void dequeue(struct queue *q)
     if (q->front == NULL) {
         return;
     }
+    q->size--;
     if (q->front == q->rear) {
         q->front = q->rear = NULL;
     } else {
