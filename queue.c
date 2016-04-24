@@ -6,12 +6,13 @@ struct queue * initqueue()
     struct queue *q = malloc(sizeof(struct queue));
     q->front = q->rear = NULL;
     q->size = 0;
+    return q;
 }
 
 void freequeue(struct queue *q)
 {
     struct queuenode *temp;
-    while (temp = front(q)) {
+    while ((temp = front(q))) {
         dequeue(q);
         free(temp);
     }
