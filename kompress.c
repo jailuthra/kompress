@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
 #include "queue.h"
+#include "bitstream.h"
 
 struct treenode {
     char symbol;
@@ -13,42 +15,65 @@ struct treenode {
 };
 
 struct huffcode {
-    char symbol;
-    uint8_t code;
+    int set;
+    char code[30];
 };
 
-void get_huffman_code(FILE *fp, uint8_t codetable[128]);
+void get_huffman_code(FILE *fp, struct huffcode codetable[128]);
 int create_freq_table(FILE *fp, struct treenode *ftable);
 int node_compar(const void *a, const void *b);
 void get_mintwo(struct queue *q1, struct queue *q2, struct treenode *tn[2]);
 
 int main(int argc, char *argv[])
 {
-    FILE *fp;
-    if (argc == 2) {
-        if (!(fp = fopen(argv[1], "r"))) {
+    FILE *fp, *kmp;
+    int i;
+    if (argc == 3) {
+        if (!(kmp = fopen(argv[1], "wb"))) {
             fprintf(stderr, "Couldn't open file %s\n", argv[1]);
             exit(EXIT_FAILURE);
         }
+        if (!(fp = fopen(argv[2], "r"))) {
+            fprintf(stderr, "Couldn't open file %s\n", argv[2]);
+            exit(EXIT_FAILURE);
+        }
     } else {
-        /* STDIN mode */
-        fp = stdin;
+        printf("USAGE: %s <outfile.kmp> <infile.txt>", argv[0]);
+        exit(EXIT_SUCCESS);
     }
-    /* Huffman Code */
-    uint8_t codetable[128];
+    /* Create Huffman code table from file */
+    struct huffcode codetable[128];
+    for (i=0; i<128; i++) {
+        codetable[i].set = 0;
+    }
     get_huffman_code(fp, codetable);
+    /* Print the table */
+    for (i=0; i<128; i++) {
+        if (codetable[i].set) {
+            printf("%c(%d) - %s\n", i, i, codetable[i].code);
+        }
+    }
+    /* Re-read input file, write each symbols huffcode to output file */
     rewind(fp);
+    struct bitstream *bs = initbitstream(kmp);
+    char c;
+    while ((c = fgetc(fp)) != EOF) {
+        assert(codetable[c].set);
+        write_bitstring(bs, codetable[(int) c].code); 
+    }
     fclose(fp);
+    printf("Padding %d\n", closebitstream(bs));
+    fclose(kmp);
     return 0;
 }
 
-void update_codes(struct treenode *root, uint8_t codetable[128],
+void update_codes(struct treenode *root, struct huffcode codetable[128],
                   char code[20])
 {
     if (root) {
         if (root->symbol != 0) {
-            printf("%c(%d): %d - %s %d\n", root->symbol, root->symbol, root->freq, code, strtol(code, NULL, 2));
-            codetable[(int) root->symbol] = strtol(code, NULL, 2);
+            codetable[(int) root->symbol].set = 1;
+            strcpy(codetable[(int) root->symbol].code, code);
         }
         int l = strlen(code);
         char lcode[20], rcode[20];
@@ -63,7 +88,7 @@ void update_codes(struct treenode *root, uint8_t codetable[128],
     }
 }
 
-void get_huffman_code(FILE *fp, uint8_t codetable[128])
+void get_huffman_code(FILE *fp, struct huffcode codetable[128])
 {
     int i;
     /* Get table of frequencies (> 0) of symbols in text */
