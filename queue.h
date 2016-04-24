@@ -1,4 +1,5 @@
-#pragma once
+#ifndef QUEUE_H
+#define QUEUE_H
 
 struct queuenode {
     void *data;
@@ -16,3 +17,5 @@ void freequeue(struct queue *q);
 void enqueue(struct queue *q, void *data);
 void dequeue(struct queue *q);
 void * front(struct queue *q);
+
+#endif
