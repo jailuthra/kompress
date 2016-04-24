@@ -17,14 +17,12 @@ void write_bit(struct bitstream *bs, char c)
 {
     assert(c == '0' || c == '1');
     assert(bs->bufoffset < 8);
-    printf("Writing %c to buffer\n", c);
     /* Write bit to buffer */
     bs->buf = (bs->buf << 1) | ((int) (c - '0'));
     bs->bufoffset += 1;
     /* If buffer full, write it to file */
     if (bs->bufoffset == 8) {
         fwrite(&bs->buf, sizeof(uint8_t), 1, bs->fp);
-        printf("Writing buffer %x\n", bs->buf);
         bs->buf = 0;
         bs->bufoffset = 0;
         bs->offset += 8;
@@ -46,7 +44,6 @@ int closebitstream(struct bitstream *bs)
         padding = 8 - bs->bufoffset;
         bs->buf <<= padding;
         fwrite(&bs->buf, sizeof(uint8_t), 1, bs->fp);
-        printf("Writing buffer %x\n", bs->buf);
     }
     free(bs);
     return padding;
