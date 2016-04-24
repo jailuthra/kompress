@@ -1,14 +1,22 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include "queue.h"
 
 struct treenode {
-    char data;
+    char symbol;
     int freq;
     struct treenode *l;
     struct treenode *r;
     struct treenode *p;
 };
 
+struct huffcode {
+    char symbol;
+    uint8_t code;
+};
+
+void get_huffman_code(FILE *fp);
 int create_freq_table(FILE *fp, struct treenode *ftable);
 int node_compar(const void *a, const void *b);
 
@@ -23,19 +31,25 @@ int main(int argc, char *argv[])
         /* STDIN mode */
         fp = stdin;
     }
-    /* Get table of frequencies (> 0) of characters in text */
-    struct treenode ftable[128];
-    int ftsize = create_freq_table(fp, ftable);
-    int i;
-    /* Sort frequency table by frequency */
-    qsort(ftable, ftsize, sizeof(struct treenode), node_compar);
-    /* Print sorted table */
-    for (i=0; i<ftsize; i++) {
-        printf("%c (%d): %d\n", ftable[i].data, ftable[i].data, ftable[i].freq);
-    }
+    /* Huffman Code */
+    get_huffman_code(fp);
     rewind(fp);
     fclose(fp);
     return 0;
+}
+
+void get_huffman_code(FILE *fp)
+{
+    /* Get table of frequencies (> 0) of symbols in text */
+    struct treenode ftable[128];
+    int ftsize = create_freq_table(fp, ftable);
+    /* Sort frequency table by frequency */
+    qsort(ftable, ftsize, sizeof(struct treenode), node_compar);
+    /* Print sorted table */
+    int i;
+    for (i=0; i<ftsize; i++) {
+        printf("%c (%d): %d\n", ftable[i].symbol, ftable[i].symbol, ftable[i].freq);
+    }
 }
 
 /** Create a frequency table from the input stream.
@@ -62,7 +76,7 @@ int create_freq_table(FILE *fp, struct treenode *ftable)
     for (i=0; i<127; i++) {
         if (freq[i] != 0) {
             node = &ftable[top++];
-            node->data = (char) i;
+            node->symbol = (char) i;
             node->freq = freq[i];
             node->l = node->r = NULL;
         }
