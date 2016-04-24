@@ -23,6 +23,8 @@ void get_huffman_code(FILE *fp, struct huffcode codetable[128]);
 int create_freq_table(FILE *fp, struct treenode *ftable);
 int node_compar(const void *a, const void *b);
 void get_mintwo(struct queue *q1, struct queue *q2, struct treenode *tn[2]);
+void update_codes(struct treenode *root, struct huffcode codetable[128],
+                  char code[20]);
 
 int main(int argc, char *argv[])
 {
@@ -53,7 +55,7 @@ int main(int argc, char *argv[])
             printf("%c(%d) - %s\n", i, i, codetable[i].code);
         }
     }
-    /* Re-read input file, write each symbols huffcode to output file */
+    /* Re-read input file, write each symbol's huffcode to output file */
     rewind(fp);
     struct bitstream *bs = initbitstream(kmp);
     char c;
@@ -88,6 +90,10 @@ void update_codes(struct treenode *root, struct huffcode codetable[128],
     }
 }
 
+/** Create a huffman code table from the input stream. 
+ * @param[in] fp Pointer to input stream
+ * @param[out] codetable Huffman code table
+ */
 void get_huffman_code(FILE *fp, struct huffcode codetable[128])
 {
     int i;
