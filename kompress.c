@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "queue.h"
 
 struct treenode {
@@ -16,7 +17,7 @@ struct huffcode {
     uint8_t code;
 };
 
-void get_huffman_code(FILE *fp);
+void get_huffman_code(FILE *fp, uint8_t codetable[128]);
 int create_freq_table(FILE *fp, struct treenode *ftable);
 int node_compar(const void *a, const void *b);
 void get_mintwo(struct queue *q1, struct queue *q2, struct treenode *tn[2]);
@@ -33,22 +34,35 @@ int main(int argc, char *argv[])
         fp = stdin;
     }
     /* Huffman Code */
-    get_huffman_code(fp);
+    uint8_t codetable[128];
+    get_huffman_code(fp, codetable);
     rewind(fp);
     fclose(fp);
     return 0;
 }
 
-void preorder(struct treenode *root)
+void update_codes(struct treenode *root, uint8_t codetable[128],
+                  char code[20])
 {
     if (root) {
-        printf("(%d): %d\n", root->symbol, root->freq);
-        preorder(root->l);
-        preorder(root->r);
+        if (root->symbol != 0) {
+            printf("%c(%d): %d - %s %d\n", root->symbol, root->symbol, root->freq, code, strtol(code, NULL, 2));
+            codetable[(int) root->symbol] = strtol(code, NULL, 2);
+        }
+        int l = strlen(code);
+        char lcode[20], rcode[20];
+        strcpy(lcode, code);
+        lcode[l] = '1';
+        lcode[l+1] = '\0';
+        strcpy(rcode, code);
+        rcode[l] = '0';
+        rcode[l+1] = '\0';
+        update_codes(root->l, codetable, lcode);
+        update_codes(root->r, codetable, rcode);
     }
 }
 
-void get_huffman_code(FILE *fp)
+void get_huffman_code(FILE *fp, uint8_t codetable[128])
 {
     int i;
     /* Get table of frequencies (> 0) of symbols in text */
@@ -67,8 +81,6 @@ void get_huffman_code(FILE *fp)
     while (q1->size > 1 || q2->size > 1) {
         struct treenode *tn[2];
         get_mintwo(q1, q2, tn);
-        /*printf("Merging nodes %c:%d, %c:%d into ", tn[0]->symbol, tn[0]->freq,*/
-                                                   /*tn[1]->symbol, tn[1]->freq);*/
         struct treenode *internal = malloc(sizeof(struct treenode)); 
         internal->symbol = 0;
         internal->freq = tn[0]->freq + tn[1]->freq;
@@ -76,12 +88,12 @@ void get_huffman_code(FILE *fp)
         tn[0]->p = internal;
         internal->r = tn[1];
         tn[1]->p = internal;
-        /*printf("internal node %p:%d\n", internal, internal->freq);*/
         enqueue(q2, internal);
     }
     /* Set root of tree */
     struct treenode *root = front(q1) ? front(q1) : front(q2);
-    preorder(root);
+    char code[10] = "";
+    update_codes(root, codetable, code);
     freequeue(q1);
     freequeue(q2);
 }
