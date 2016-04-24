@@ -1,4 +1,5 @@
 #include<stdio.h>
+#include<stdlib.h>
 
 struct treenode {
     char data;
@@ -9,6 +10,7 @@ struct treenode {
 };
 
 int create_freq_table(FILE *fp, struct treenode *ftable);
+int node_compar(const void *a, const void *b);
 
 int main(int argc, char *argv[])
 {
@@ -25,6 +27,9 @@ int main(int argc, char *argv[])
     struct treenode ftable[128];
     int ftsize = create_freq_table(fp, ftable);
     int i;
+    /* Sort frequency table by frequency */
+    qsort(ftable, ftsize, sizeof(struct treenode), node_compar);
+    /* Print sorted table */
     for (i=0; i<ftsize; i++) {
         printf("%c (%d): %d\n", ftable[i].data, ftable[i].data, ftable[i].freq);
     }
@@ -63,4 +68,16 @@ int create_freq_table(FILE *fp, struct treenode *ftable)
         }
     }
     return top;
+}
+
+int node_compar(const void *a, const void *b)
+{
+    const struct treenode *na = a, *nb = b;
+    if (na->freq < nb->freq) {
+        return -1;
+    } else if (na->freq > nb->freq) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
