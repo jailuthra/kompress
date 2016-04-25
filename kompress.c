@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     } else {
-        printf("USAGE: %s <outfile.kmp> <infile.txt>", argv[0]);
+        printf("USAGE: %s <outfile.kmp> <infile.txt>\n", argv[0]);
         exit(EXIT_SUCCESS);
     }
     /* Create Huffman code table from file */
@@ -102,8 +102,13 @@ void write_header(FILE *fp, uint8_t padding, struct huffcode codetable[128])
             fwrite(&byte, sizeof(uint8_t), 1, fp);
             /* Write huffcode info */
             strcpy(code, codetable[i].code);
-            x = (strlen(code) / 8) + 1; // no. of bytes
-            y = 8 - (strlen(code) % 8); // padding bits
+            if (strlen(code) % 8 != 0) {
+                x = (strlen(code) / 8) + 1; // no. of bytes
+                y = 8 - (strlen(code) % 8); // padding bits
+            } else {
+                x = strlen(code) / 8; // no. of bytes
+                y = 0; // padding bits
+            }
             assert(x < 64 && y < 64);
             byte = x;
             byte = (byte << 4) | y;
@@ -120,9 +125,11 @@ void write_header(FILE *fp, uint8_t padding, struct huffcode codetable[128])
             byte = 0;
             for (j=0; j<strlen(code); j++) {
                 byte = (byte << 1) | ((int) (code[j] - '0'));
+                offset++;
                 if (offset == 8) {
                     fwrite(&byte, sizeof(uint8_t), 1, fp);
                     byte = 0;
+                    offset = 0;
                 }
             }
         }
