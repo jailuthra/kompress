@@ -8,7 +8,7 @@ struct huffcode {
     char code[30];
 };
 
-void read_header(FILE *fp, struct huffcode codetable[128])
+void read_header(FILE *fp, struct huffcode codebook[128])
 {
     uint8_t byte, x, y;
     uint16_t twobyte;
@@ -41,8 +41,8 @@ void read_header(FILE *fp, struct huffcode codetable[128])
                 code[strlen(code) + 1] = '\0';
             }
         }
-        codetable[symb].set = 1;
-        strcpy(codetable[symb].code, code);
+        codebook[symb].set = 1;
+        strcpy(codebook[symb].code, code);
     }
 }
 
@@ -59,14 +59,14 @@ int main(int argc, char *argv[])
         printf("USAGE: %s <infile.kmp>\n", argv[0]);
         exit(EXIT_SUCCESS);
     }
-    struct huffcode codetable[128];
+    struct huffcode codebook[128];
     for (i=0; i<128; i++) {
-        codetable[i].set = 0;
+        codebook[i].set = 0;
     }
-    read_header(kmp, codetable);
+    read_header(kmp, codebook);
     for (i=0; i<128; i++) {
-        if (codetable[i].set) {
-            printf("%c(%d) - %s\n", i, i, codetable[i].code);
+        if (codebook[i].set) {
+            printf("%c(%d) - %s\n", i, i, codebook[i].code);
         }
     }
     return 0;
