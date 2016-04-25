@@ -19,6 +19,7 @@ struct huffcode {
     char code[30];
 };
 
+void write_header(FILE *fp, uint8_t padding, struct huffcode codetable[128]);
 void get_huffman_code(FILE *fp, struct huffcode codetable[128]);
 int create_freq_table(FILE *fp, struct treenode *ftable);
 int node_compar(const void *a, const void *b);
@@ -49,24 +50,83 @@ int main(int argc, char *argv[])
         codetable[i].set = 0;
     }
     get_huffman_code(fp, codetable);
-    /* Print the table */
-    for (i=0; i<128; i++) {
-        if (codetable[i].set) {
-            printf("%c(%d) - %s\n", i, i, codetable[i].code);
-        }
-    }
-    /* Re-read input file, write each symbol's huffcode to output file */
+    /* Re-read input file, write each symbol's huffcode to temp file */
     rewind(fp);
-    struct bitstream *bs = initbitstream(kmp);
+    FILE *temp = tmpfile();
+    struct bitstream *bs = initbitstream(temp);
     char c;
     while ((c = fgetc(fp)) != EOF) {
         assert(codetable[c].set);
         write_bitstring(bs, codetable[(int) c].code); 
     }
     fclose(fp);
-    printf("Padding %d\n", closebitstream(bs));
+    /* Close bitstream, get padding bits in last byte */
+    uint8_t padding = closebitstream(bs);
+    /* Write header to the output file */
+    write_header(kmp, padding, codetable);
+    /* Copy bitstream from tempfile to output file */
+    rewind(temp);
+    uint8_t byte;
+    while (fread(&byte, sizeof(uint8_t), 1, temp) == 1) {
+        fwrite(&byte, sizeof(uint8_t), 1, kmp);
+    }
+    fclose(temp);
     fclose(kmp);
     return 0;
+}
+
+void write_header(FILE *fp, uint8_t padding, struct huffcode codetable[128])
+{
+    uint8_t byte;
+    int n = 0, i, j, k;
+    /* Write identifying hex code 0x05A1 */
+    putc(0x05, fp);
+    putc(0xA1, fp);
+    /* Write padding byte */
+    fwrite(&padding, sizeof(uint8_t), 1, fp);
+    /* Write number of symbols */
+    for (i=0; i<128; i++) {
+        if (codetable[i].set) {
+            n++;
+        }
+    }
+    byte = n;
+    fwrite(&byte, sizeof(uint8_t), 1, fp);
+    /* Writing the code map */
+    uint8_t x, y, l, buf, offset;
+    char code[30];
+    for (i=0; i<128; i++) {
+        if (codetable[i].set) {
+            /* Write ascii code */
+            byte = i;
+            fwrite(&byte, sizeof(uint8_t), 1, fp);
+            /* Write huffcode info */
+            strcpy(code, codetable[i].code);
+            x = (strlen(code) / 8) + 1; // no. of bytes
+            y = 8 - (strlen(code) % 8); // padding bits
+            assert(x < 64 && y < 64);
+            byte = x;
+            byte = (byte << 4) | y;
+            fwrite(&byte, sizeof(uint8_t), 1, fp);
+            /* Write huffcode */
+            l = strlen(code);
+            for (j=0; j<y; j++) {
+                code[l + j] = '0';
+            }
+            code[l + j] = '\0';
+            assert(strlen(code) % 8 == 0);
+            assert(strlen(code) / 8 == x);
+            offset = 0;
+            byte = 0;
+            for (j=0; j<strlen(code); j++) {
+                byte = (byte << 1) | ((int) (code[j] - '0'));
+                if (offset == 8) {
+                    fwrite(&byte, sizeof(uint8_t), 1, fp);
+                    byte = 0;
+                }
+            }
+        }
+    }
 }
 
 void update_codes(struct treenode *root, struct huffcode codetable[128],
@@ -108,7 +168,6 @@ void get_huffman_code(FILE *fp, struct huffcode codetable[128])
     for (i=0; i<ftsize; i++) {
         enqueue(q1, &ftable[i]);
     }
-    printf("%d\n", q1->size);
     /* Form tree using both queues */
     while (q1->size > 1 || q2->size > 1) {
         struct treenode *tn[2];
