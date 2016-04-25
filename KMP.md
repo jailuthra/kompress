@@ -28,6 +28,6 @@ thus a byte representation might need padding (**y**) in the last byte.
 Kompress file bitstream
 -----------------------
 
-Each character *c* read from the original file is converted into it's huffcode and
+Each character *c* read from the original file is converted into its huffcode and
 appended to the bitstream. Finally the bitstream is written to the KMP file, in units
 of one byte. (Thus last byte may have a padding of 0-7 bits)
