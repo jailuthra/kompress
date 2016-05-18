@@ -2,27 +2,24 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include "bitstream.h"
+#include "kmp.h"
 
-struct huffcode {
-    int set;
-    char code[30];
-};
-
-void read_header(FILE *fp, struct huffcode codebook[128])
+int read_header(FILE *fp, struct huffcode codebook[ALPHLEN])
 {
     uint8_t byte, x, y;
-    uint16_t twobyte;
+    uint16_t magic;
     fread(&byte, sizeof(uint8_t), 1, fp);
-    twobyte = byte;
+    magic = byte;
     fread(&byte, sizeof(uint8_t), 1, fp);
-    twobyte <<= 8;
-    twobyte |= byte;
-    if (!(twobyte == 0x05A1)) {
+    magic <<= 8;
+    magic |= byte;
+    if (!(magic == 0x05A1)) {
         fprintf(stderr, "File is not in KMP format\n");
         exit(EXIT_FAILURE);
     }
     fread(&byte, sizeof(uint8_t), 1, fp);
-    printf("padding %d\n", byte);
+    int padding = byte;
     fread(&byte, sizeof(uint8_t), 1, fp);
     int n = byte, i, j, k, symb;
     char code[30];
@@ -44,6 +41,31 @@ void read_header(FILE *fp, struct huffcode codebook[128])
         codebook[symb].set = 1;
         strcpy(codebook[symb].code, code);
     }
+    return padding;
+}
+
+void update_tree(struct treenode *root, uint8_t sym, char *code)
+{
+    struct treenode *ptr = root;
+    int i;
+    for (i=0; code[i]; i++) {
+        if (code[i] == '0') {
+            if (!ptr->l) {
+                ptr->l = malloc(sizeof(struct treenode));
+                ptr->l->symbol = 0;
+                ptr->l->l = ptr->l->r = NULL;
+            }
+            ptr = ptr->l;
+        } else {
+            if (!ptr->r) {
+                ptr->r = malloc(sizeof(struct treenode));
+                ptr->r->symbol = 0;
+                ptr->r->l = ptr->r->r = NULL;
+            }
+            ptr = ptr->r;
+        }
+    }
+    ptr->symbol = sym;
 }
 
 int main(int argc, char *argv[])
@@ -59,15 +81,39 @@ int main(int argc, char *argv[])
         printf("USAGE: %s <infile.kmp>\n", argv[0]);
         exit(EXIT_SUCCESS);
     }
-    struct huffcode codebook[128];
-    for (i=0; i<128; i++) {
+    struct huffcode codebook[ALPHLEN];
+    for (i=0; i<ALPHLEN; i++) {
         codebook[i].set = 0;
     }
-    read_header(kmp, codebook);
-    for (i=0; i<128; i++) {
+    int padding = read_header(kmp, codebook);
+    struct treenode *root = malloc(sizeof(struct treenode));
+    root->symbol = 0;
+    root->l = root->r = NULL;
+    for (i=0; i<ALPHLEN; i++) {
         if (codebook[i].set) {
-            printf("%c(%d) - %s\n", i, i, codebook[i].code);
+            update_tree(root, i, codebook[i].code);
         }
     }
+    struct treenode *ptr = root;
+    struct bitstream *bs = initbitstream(kmp, BS_READ, padding);
+    int start = 1;
+    int b;
+    while ((b = read_bit(bs)) != -1) {
+        if (start) {
+            ptr = root;
+            start = 0;
+        }
+        if (b == 0) {
+            ptr = ptr->l;
+        } else if (b == 1) {
+            ptr = ptr->r;
+        }
+        if (ptr->symbol) {
+            start = 1;
+            printf("%c", ptr->symbol);
+        }
+    }
+    closebitstream(bs);
+    fclose(kmp);
     return 0;
 }

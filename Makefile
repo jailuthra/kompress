@@ -3,13 +3,13 @@ CFLAGS=
 
 all: kompress dekompress
 
-kompress: kompress.o queue.o bitstream.o
+kompress: kompress.o queue.o bitstream.o kmp.h
 	$(CC) $(CFLAGS) kompress.o queue.o bitstream.o -o kompress
 
-dekompress: dekompress.o
-	$(CC) $(CFLAGS) dekompress.o -o dekompress
+dekompress: dekompress.o bitstream.o kmp.h
+	$(CC) $(CFLAGS) dekompress.o bitstream.o -o dekompress
 
 clean:
 	rm -rf *.o
-	rm kompress
-	rm dekompress
+	rm -f kompress
+	rm -f dekompress

@@ -14,3 +14,10 @@ Compressing
 ```
 ./kompress <out.kmp> <in.txt>
 ```
+
+Decompressing
+-------------
+
+```
+./dekompress <in.kmp> > out.txt
+```
