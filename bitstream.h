@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Bitstream lib header
+ */
+
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
 

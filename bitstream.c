@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Bitstream lib
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
