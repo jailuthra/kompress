@@ -26,16 +26,20 @@ int read_header(FILE *fp, struct huffcode codebook[ALPHLEN])
     fread(&byte, sizeof(uint8_t), 1, fp);
     int padding = byte;
     fread(&byte, sizeof(uint8_t), 1, fp);
-    int n = byte, i, j, k, symb;
-    char code[30];
-    memset(code, 0, 30);
+    int n = byte, i, j, k;
+    uint8_t symb;
+    char code[MAX_CODELEN];
+    memset(code, 0, MAX_CODELEN);
+    if (n == 0) {
+        n = 256;
+    }
     for (i=0; i<n; i++) {
         fread(&byte, sizeof(uint8_t), 1, fp);
         symb = byte;
         fread(&byte, sizeof(uint8_t), 1, fp);
         x = byte >> 4; // no. of bytes
         y = byte & 0x0f; // padding
-        memset(code, 0, 30);
+        memset(code, 0, MAX_CODELEN);
         for (j=0; j<x; j++) {
             fread(&byte, sizeof(uint8_t), 1, fp);
             for (k=7; (j!=x-1 && k>=0) || (j==x-1 && k>=y); k--) {
@@ -57,20 +61,21 @@ void update_tree(struct treenode *root, uint8_t sym, char *code)
         if (code[i] == '0') {
             if (!ptr->l) {
                 ptr->l = malloc(sizeof(struct treenode));
-                ptr->l->symbol = 0;
+                ptr->l->is_internal = 1;
                 ptr->l->l = ptr->l->r = NULL;
             }
             ptr = ptr->l;
         } else {
             if (!ptr->r) {
                 ptr->r = malloc(sizeof(struct treenode));
-                ptr->r->symbol = 0;
+                ptr->r->is_internal = 1;
                 ptr->r->l = ptr->r->r = NULL;
             }
             ptr = ptr->r;
         }
     }
     ptr->symbol = sym;
+    ptr->is_internal = 0;
 }
 
 int main(int argc, char *argv[])
@@ -93,6 +98,7 @@ int main(int argc, char *argv[])
     int padding = read_header(kmp, codebook);
     struct treenode *root = malloc(sizeof(struct treenode));
     root->symbol = 0;
+    root->is_internal = 1;
     root->l = root->r = NULL;
     for (i=0; i<ALPHLEN; i++) {
         if (codebook[i].set) {
@@ -113,9 +119,10 @@ int main(int argc, char *argv[])
         } else if (b == 1) {
             ptr = ptr->r;
         }
-        if (ptr->symbol) {
+        if (!ptr->is_internal) {
             start = 1;
-            printf("%c", ptr->symbol);
+            //printf("%c", ptr->symbol);
+            fwrite(&ptr->symbol, sizeof(uint8_t), 1, stdout);
         }
     }
     closebitstream(bs);

@@ -3,6 +3,8 @@
  * Kompress
  */
 
+/* TODO check if file is empty */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -18,7 +20,7 @@ int create_freq_table(FILE *fp, struct treenode *ftable);
 int node_compar(const void *a, const void *b);
 void get_mintwo(struct queue *q1, struct queue *q2, struct treenode *tn[2]);
 void update_codes(struct treenode *root, struct huffcode codebook[ALPHLEN],
-                  char code[20]);
+                  char code[MAX_CODELEN]);
 
 int main(int argc, char *argv[])
 {
@@ -43,13 +45,20 @@ int main(int argc, char *argv[])
         codebook[i].set = 0;
     }
     get_huffman_code(fp, codebook);
+    printf("CODEBOOK\n");
+    for (i=0; i<ALPHLEN; i++) {
+        printf("%d - %s\n", i, codebook[i].code);
+    }
     /* Re-read input file, write each symbol's huffcode to temp file */
     rewind(fp);
     FILE *temp = tmpfile();
     struct bitstream *bs = initbitstream(temp, BS_WRITE);
     uint8_t byte;
     while (fread(&byte, sizeof(uint8_t), 1, fp) == 1) {
-        assert(codebook[byte].set);
+        if(!codebook[byte].set) {
+            printf("byte: %d\n", byte);
+            assert(0);
+        }
         write_bitstring(bs, codebook[byte].code);
     }
     fclose(fp);
@@ -83,6 +92,8 @@ void write_header(FILE *fp, uint8_t padding, struct huffcode codebook[ALPHLEN])
         }
     }
     byte = n; fwrite(&byte, sizeof(uint8_t), 1, fp);
+    printf("No. of bytes: %d\n", n);
+    printf("Padding bits: %d\n", padding);
     /* Writing the code map */
     uint8_t x, y, l, buf, offset;
     char code[30];
@@ -128,15 +139,15 @@ void write_header(FILE *fp, uint8_t padding, struct huffcode codebook[ALPHLEN])
 }
 
 void update_codes(struct treenode *root, struct huffcode codebook[ALPHLEN],
-                  char code[20])
+                  char code[MAX_CODELEN])
 {
     if (root) {
-        if (root->symbol != 0) {
+        if (!root->is_internal) {
             codebook[(int) root->symbol].set = 1;
             strcpy(codebook[(int) root->symbol].code, code);
         }
         int l = strlen(code);
-        char lcode[20], rcode[20];
+        char lcode[MAX_CODELEN], rcode[MAX_CODELEN];
         strcpy(lcode, code);
         lcode[l] = '0';
         lcode[l+1] = '\0';
@@ -174,6 +185,7 @@ void get_huffman_code(FILE *fp, struct huffcode codebook[ALPHLEN])
         internal->symbol = 0;
         internal->freq = tn[0]->freq + tn[1]->freq;
         internal->l = tn[0];
+        internal->is_internal = 1;
         tn[0]->p = internal;
         internal->r = tn[1];
         tn[1]->p = internal;
@@ -181,7 +193,7 @@ void get_huffman_code(FILE *fp, struct huffcode codebook[ALPHLEN])
     }
     /* Set root of tree */
     struct treenode *root = front(q1) ? front(q1) : front(q2);
-    char code[10] = "";
+    char code[MAX_CODELEN] = "";
     update_codes(root, codebook, code);
     freequeue(q1);
     freequeue(q2);
@@ -208,10 +220,11 @@ int create_freq_table(FILE *fp, struct treenode *ftable)
     /* update table */
     struct treenode *node;
     int top = 0;
-    for (i=0; i<127; i++) {
+    for (i=0; i<ALPHLEN; i++) {
         if (freq[i] != 0) {
             node = &ftable[top++];
             node->symbol = (char) i;
+            node->is_internal = 0;
             node->freq = freq[i];
             node->l = node->r = NULL;
         }

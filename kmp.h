@@ -7,10 +7,12 @@
 #define KMP_H
 
 #define ALPHLEN 256
+#define MAX_CODELEN 40
 
 struct treenode {
-    char symbol;
+    uint8_t symbol;
     int freq;
+    int is_internal;
     struct treenode *l;
     struct treenode *r;
     struct treenode *p;
@@ -18,7 +20,7 @@ struct treenode {
 
 struct huffcode {
     int set;
-    char code[30];
+    char code[MAX_CODELEN];
 };
 
 #endif
