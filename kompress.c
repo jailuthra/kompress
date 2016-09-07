@@ -45,10 +45,6 @@ int main(int argc, char *argv[])
         codebook[i].set = 0;
     }
     get_huffman_code(fp, codebook);
-    printf("CODEBOOK\n");
-    for (i=0; i<ALPHLEN; i++) {
-        printf("%d - %s\n", i, codebook[i].code);
-    }
     /* Re-read input file, write each symbol's huffcode to temp file */
     rewind(fp);
     FILE *temp = tmpfile();
@@ -92,8 +88,6 @@ void write_header(FILE *fp, uint8_t padding, struct huffcode codebook[ALPHLEN])
         }
     }
     byte = n; fwrite(&byte, sizeof(uint8_t), 1, fp);
-    printf("No. of bytes: %d\n", n);
-    printf("Padding bits: %d\n", padding);
     /* Writing the code map */
     uint8_t x, y, l, buf, offset;
     char code[30];
